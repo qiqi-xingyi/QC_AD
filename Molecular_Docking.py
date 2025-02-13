@@ -92,7 +92,6 @@ def compute_ground_state_energy(molecule: Molecule, basis: str = "sto3g") -> flo
 
 if __name__ == '__main__':
 
-
     # ================
     # 3) 准备简化的“蛋白-配体”三种结构
     # ================
