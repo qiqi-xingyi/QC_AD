@@ -54,13 +54,15 @@ if __name__=="__main__":
     mf = scf.RHF(mol)
     mf.kernel()
 
-    # 自动选择活性空间
-    homo_idx = mf.mo_occ.argmax()  # 找到 HOMO 轨道索引
-    lumo_idx = homo_idx + 1  # LUMO 轨道索引
-    n_active_orbitals = 8  # 选取 HOMO-3 ~ LUMO+3 共 8 个轨道
-    n_active_electrons = 10  # 选取 10 个电子
+    # # 自动选择活性空间
+    # mo_occ = mf.mo_occ  # 轨道占据数
+    # homo_idx = np.where(mo_occ > 0)[0][-1]  # 找到最后一个占据轨道
+    # lumo_idx = homo_idx + 1  # LUMO 轨道索引
 
-    print(f"自动选择 HOMO: {homo_idx}, LUMO: {lumo_idx}")
+    n_active_orbitals = 40  # 选取 HOMO-3 ~ LUMO+3 共 8 个轨道
+    n_active_electrons = 42  # 选取 10 个电子
+
+    # print(f"自动选择 HOMO: {homo_idx}, LUMO: {lumo_idx}")
     print(f"选取 {n_active_electrons} 个电子，{n_active_orbitals} 个轨道")
 
     # Qiskit 计算哈密顿量
@@ -73,6 +75,7 @@ if __name__=="__main__":
         num_spatial_orbitals=n_active_orbitals
     )
     problem = active_space.transform(problem)
+
 
     # 量子比特映射
     qubit_mapper = ParityMapper()
