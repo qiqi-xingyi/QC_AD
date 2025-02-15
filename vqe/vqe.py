@@ -11,6 +11,8 @@ from qiskit_ibm_runtime import Session
 from qiskit_ibm_runtime import EstimatorV2 as Estimator
 from qiskit.primitives import Sampler
 from qiskit.transpiler.preset_passmanagers import generate_preset_pass_manager
+from qiskit_nature.second_q.circuit.library import UCCSD
+from qiskit_nature.second_q.mappers import ParityMapper
 
 
 class VQE:
@@ -37,7 +39,14 @@ class VQE:
         self.shots = shots
         self.backend = self._select_backend(min_quits=min_qubit_num)
         self.hamiltonian = hamiltonian
-        self.ansatz = EfficientSU2(self.hamiltonian.num_qubits)
+        # self.ansatz = EfficientSU2(self.hamiltonian.num_qubits)
+
+        self.ansatz = UCCSD(
+            num_spatial_orbitals=8,
+            num_particles=(5, 5),
+            qubit_mapper=ParityMapper()
+        )
+
         self.optimization_level = optimization_level
         self.cost_history_dict = {"prev_vector": None, "iters": 0, "cost_history": []}
         self.energy_list = []
