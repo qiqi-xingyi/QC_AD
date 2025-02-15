@@ -6,7 +6,7 @@
 
 import re
 from collections import defaultdict
-
+import os
 
 class PDBStructure:
     """
@@ -191,7 +191,191 @@ class PDBStructure:
             return False
         return True
 
-    # ...更多功能可依需求扩展...
+    def get_xyz_geometry(self, atoms_list):
+        """
+        将给定 atoms_list(里面是 dict {x,y,z,element,...})
+        转成量子流程常用的 geometry=[(symbol,(x,y,z)),...].
+        如果 element为空,可回退 atom_name首字母.
+        """
+        out_geometry = []
+        for atm in atoms_list:
+            symbol = atm["element"] if atm["element"] else atm["name"][0]
+            coords = (atm["x"], atm["y"], atm["z"])
+            out_geometry.append((symbol, coords))
+        return out_geometry
+
+    def export_subsystems_for_quantum(self, output_dir, ligand_resname="2RV"):
+        """
+        读取自身解析得到的atoms信息，将全PDB系统分解成若干子系统，
+        并将每个子系统的原子坐标以XYZ文件形式输出到指定文件夹(output_dir).
+
+        示例逻辑:
+        1) 查找所有蛋白残基(默认: 标准氨基酸, chain==A等),
+        2) 查找配体(resName == ligand_resname),
+        3) 对每个蛋白残基 + 配体 => 生成xyz文件,
+        4) 也输出该残基单独xyz, 以及配体单独xyz(只一次).
+
+        可根据需要作微调.
+        """
+        # 0) 如果文件夹不存在就创建
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        # 1) 将原子按 (chain,resSeq,resName) 分组
+        residue_dict = defaultdict(list)
+        for atm in self.atoms:
+            key = (atm["chainID"], atm["resSeq"], atm["resName"])
+            residue_dict[key].append(atm)
+
+        # 2) 识别配体碎片(假设resName==ligand_resname)
+        #    也可能有多个配体, 这里简化只取第一个
+        ligand_key = None
+        ligand_atoms = []
+        for (chain, rseq, rname), at_list in residue_dict.items():
+            if rname == ligand_resname:
+                ligand_key = (chain, rseq, rname)
+                ligand_atoms = at_list
+                break
+
+        if not ligand_atoms:
+            print(f"[Warning] No ligand with resName={ligand_resname} found in PDB.")
+        else:
+            # 先输出一下配体单独的XYZ(如果需要)
+            ligand_filename = os.path.join(output_dir,
+                                           f"ligand_{ligand_key[0]}_{ligand_key[1]}_{ligand_key[2]}.xyz")
+            self._write_xyz(ligand_atoms, ligand_filename,
+                            comment=f"Ligand {ligand_key}")
+
+        # 3) 输出每个蛋白残基(当子系统)
+        #    定义: 标准氨基酸 or chain=='A' etc. 这里举例只排除 "HOH" 和 ligand_resname
+        protein_keys = []
+        for key in residue_dict.keys():
+            chain, rseq, rname = key
+            # 简单判断: 如果 rname != 'HOH' and != ligand_resname => 视作蛋白
+            if rname not in ("HOH", ligand_resname):
+                protein_keys.append(key)
+
+        # 4) 针对每个蛋白残基 => 输出单独XYZ, 以及与配体组合XYZ
+        for key in protein_keys:
+            chain, rseq, rname = key
+            res_atoms = residue_dict[key]
+
+            # 4.1 输出蛋白残基单独xyz
+            res_filename = os.path.join(output_dir, f"res_{chain}_{rseq}_{rname}.xyz")
+            self._write_xyz(res_atoms, res_filename,
+                            comment=f"Single residue: {chain} {rseq} {rname}")
+
+            # 4.2 如果有配体 => 输出蛋白残基 + 配体
+            if ligand_atoms:
+                combined = res_atoms + ligand_atoms
+                comb_filename = os.path.join(output_dir, f"res_{chain}_{rseq}_{rname}_plus_ligand.xyz")
+                self._write_xyz(combined, comb_filename,
+                                comment=f"Residue {chain} {rseq} {rname} + ligand {ligand_key}")
+
+        print(f"[Done] Exported subsystem XYZ files into '{output_dir}'.")
+
+    # ---------------------------------
+    # 以下是一个辅助写xyz的方法
+    # ---------------------------------
+    def _write_xyz(self, atoms_list, xyz_path, comment=""):
+        """
+        将给定 atoms_list(原子dict的列表) 写成 .xyz 文件.
+        coords => x,y,z
+        element => element or fallback.
+
+        .xyz格式:
+          第一行: 原子数
+          第二行: 注释(可选)
+          第三行起: symbol  x  y  z
+        """
+        # 准备 geometry data
+        geometry = []
+        for atm in atoms_list:
+            symbol = atm["element"] if atm["element"] else atm["name"][0]
+            x, y, z = atm["x"], atm["y"], atm["z"]
+            geometry.append((symbol, x, y, z))
+
+        with open(xyz_path, "w") as f:
+            f.write(f"{len(geometry)}\n")
+            f.write(comment + "\n")
+            for (sym, x, y, z) in geometry:
+                f.write(f"{sym}  {x:.3f}  {y:.3f}  {z:.3f}\n")
+
+        print(f"[Exported] {xyz_path}  (#atoms={len(geometry)})")
+
+    def export_subsystems_for_quantum_in_subfolders(self, output_dir, ligand_resname="2RV"):
+        """
+        将蛋白-配体体系分解为 [每个氨基酸(残基) + 配体] 的子系统，
+        并在 output_dir 下为每个子系统创建一个专门的文件夹，里面存:
+          - res.xyz (该残基单独)
+          - ligand.xyz (配体单独)
+          - res_plus_ligand.xyz (二者组合)
+
+        这样可方便二体展开或结合能计算的后续处理。
+        """
+        # 如果output_dir不存在就创建
+        if not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+
+        # 1) 将原子按 (chain,resSeq,resName) 分组
+        residue_dict = defaultdict(list)
+        for atm in self.atoms:
+            key = (atm["chainID"], atm["resSeq"], atm["resName"])
+            residue_dict[key].append(atm)
+
+        # 2) 找到配体(假设resName=ligand_resname)
+        ligand_key = None
+        ligand_atoms = []
+        for (chain, rseq, rname), at_list in residue_dict.items():
+            if rname == ligand_resname:
+                ligand_key = (chain, rseq, rname)
+                ligand_atoms = at_list
+                break
+
+        if not ligand_atoms:
+            print(f"[Warning] No ligand with resName='{ligand_resname}' found in PDB.")
+        else:
+            print(f"Found ligand {ligand_key}, #atoms={len(ligand_atoms)}")
+
+        # 3) 准备输出：对每个蛋白残基 => 创建子文件夹 => 写 xyz
+        #    这里简单过滤: 排除 HOH(水) 与 ligand_resname
+        protein_keys = []
+        for (chain, rseq, rname) in residue_dict.keys():
+            if rname not in ("HOH", ligand_resname):
+                protein_keys.append((chain, rseq, rname))
+        protein_keys.sort()
+
+        # 4) 逐个处理蛋白残基
+        for key in protein_keys:
+            chain, rseq, rname = key
+            res_atoms = residue_dict[key]
+            # 子系统文件夹名：如 sub_A_267_PHE
+            subfolder_name = f"sub_{chain}_{rseq}_{rname}"
+            subfolder_path = os.path.join(output_dir, subfolder_name)
+            if not os.path.exists(subfolder_path):
+                os.makedirs(subfolder_path)
+
+            # 4.1 输出res.xyz (该残基单独)
+            res_filename = os.path.join(subfolder_path, "res.xyz")
+            self._write_xyz(res_atoms, res_filename,
+                            comment=f"Residue {chain} {rseq} {rname}")
+
+            # 4.2 如果有配体 => 写 ligand.xyz (同一个子文件夹)
+            if ligand_atoms:
+                ligand_filename = os.path.join(subfolder_path, "ligand.xyz")
+                # 这里可以把配体也单独写一次
+                self._write_xyz(ligand_atoms, ligand_filename,
+                                comment=f"Ligand {ligand_key}")
+
+                # 4.3 写res_plus_ligand.xyz
+                combined_atoms = res_atoms + ligand_atoms
+                comb_filename = os.path.join(subfolder_path, "res_plus_ligand.xyz")
+                self._write_xyz(combined_atoms, comb_filename,
+                                comment=f"Residue+Ligand => {key}+{ligand_key}")
+
+        print(f"[Done] Exported all subsystems into subfolders under '{output_dir}'.")
+
+
 
 
 
