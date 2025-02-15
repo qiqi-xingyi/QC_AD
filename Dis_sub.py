@@ -11,25 +11,32 @@ PDB子系统提取工具
 用法：python extract_subsystem.py input.pdb [options]
 """
 
-import argparse
-import math
+# --*-- coding:utf-8 --*--
 from Bio.PDB import PDBParser, Select, PDBIO
 
+# ========== 调试参数设置区 ==========
+INPUT_PDB = "./data_set/EC5026_5Apart.pdb"  # 输入文件路径
+LIGAND_ID = "B:603"  # 配体位置 (格式: 链:残基号)
+CUTOFF = 4.0  # 选择半径 (Å)
+OUTPUT_PDB = "subsystem.pdb"  # 输出文件名
+
+
+# ===================================
 
 class SubsystemSelector(Select):
     """ 基于距离的子系统选择器 """
 
-    def __init__(self, ligand_id, cutoff=4.0):
-        self.ligand_atoms = []
-        self.cutoff_sq = cutoff ** 2
-        self.ligand_chain, self.ligand_resnum = ligand_id.split(":")
+    def __init__(self):
+        self.ligand_chain, self.ligand_resnum = LIGAND_ID.split(":")
         self.ligand_resnum = int(self.ligand_resnum)
+        self.cutoff_sq = CUTOFF ** 2
+        self.ligand_atoms = []
         self.selected_residues = set()
 
     def process_ligand(self, residue):
         """ 识别并记录配体原子坐标 """
-        if (residue.parent.id == self.ligand_chain and
-                residue.id[1] == self.ligand_resnum):
+        if (residue.parent.id == self.ligand_chain
+                and residue.id[1] == self.ligand_resnum):
             self.ligand_atoms.extend(atom.get_coord() for atom in residue)
             return True
         return False
@@ -42,62 +49,60 @@ class SubsystemSelector(Select):
         # 检查蛋白质残基
         for atom in residue:
             for lig_coord in self.ligand_atoms:
-
-                distance_sq = sum((a - b) ** 2 for a, b in zip(atom.get_coord(), lig_coord)
-
+                distance_sq = sum(
+                    (a - b) ** 2
+                    for a, b in zip(atom.get_coord(), lig_coord)
+                )
                 if distance_sq < self.cutoff_sq:
-
                     self.selected_residues.add(residue)
                     return True
-
         return False
 
     def accept_atom(self, atom):
-        # 保留所有选中残基的原子
         return atom.get_parent() in self.selected_residues
 
 
-def main():
-    parser = argparse.ArgumentParser(description='PDB子系统提取工具')
-    parser.add_argument('input', default='data_set/EC5026_5Apart.pdb', help='输入PDB文件路径')
-    parser.add_argument('-l', '--ligand', required=True, default='B:603',
-                        help='配体位置 (格式: 链:残基号 如 B:603)')
-    parser.add_argument('-c', '--cutoff', type=float, default=3.0,
-                        help='选择半径 (Å，默认4.0)')
-    parser.add_argument('-o', '--output', default='subsystem.pdb',
-                        help='输出文件名 (默认subsystem.pdb)')
-
-    args = parser.parse_args()
-
+if __name__ == '__main__':
     try:
-        # 创建选择器
-        selector = SubsystemSelector(args.ligand, args.cutoff)
+        # 初始化选择器
+        selector = SubsystemSelector()
 
         # 解析结构
         parser = PDBParser(QUIET=True)
-        structure = parser.get_structure('input', args.input)
+        structure = parser.get_structure('input', INPUT_PDB)
 
         # 验证配体存在
         if not selector.ligand_atoms:
-            raise ValueError(f"未找到配体 {args.ligand}，请检查输入")
+            raise ValueError(
+                f"❌ 配体 {LIGAND_ID} 未找到！请检查：\n"
+                f"1. 输入文件是否包含链 {LIGAND_ID.split(':')[0]}\n"
+                f"2. 是否存在残基号 {LIGAND_ID.split(':')[1]}"
+            )
 
         # 保存子系统
         io = PDBIO()
         io.set_structure(structure)
-        io.save(args.output, selector)
+        io.save(OUTPUT_PDB, selector)
 
-        # 统计信息
-        print(f"成功生成子系统文件: {args.output}")
-        print(f"包含配体 {args.ligand} 及其 {len(selector.selected_residues)} 个邻近残基")
-        print(f"选择半径: {args.cutoff} Å")
+        # 打印调试信息
+        print("✅ 调试结果")
+        print(f"输入文件: {INPUT_PDB}")
+        print(f"找到配体: {LIGAND_ID}")
+        print(f"包含邻近残基数: {len(selector.selected_residues)}")
+        print(f"输出文件: {OUTPUT_PDB}")
 
+        # 可视化提示
+        print("\n🔍 建议使用PyMOL验证结果:")
+        print(f"cmd.load('{OUTPUT_PDB}')")
+        print("cmd.show('sticks', 'all')")
+        print("cmd.zoom()")
+
+    except FileNotFoundError:
+        print(f"🔥 文件未找到: {INPUT_PDB}\n"
+              f"请检查路径是否正确，当前工作目录: {os.getcwd()}")
     except Exception as e:
-        print(f"错误: {str(e)}")
-        print("建议检查：")
-        print("1. 配体标识符格式是否正确 (例如 B:603)")
-        print("2. 输入文件是否包含指定配体")
-        print("3. 文件路径是否正确")
-
-
-if __name__ == '__main__':
-    main()
+        print(f"❌ 发生错误: {str(e)}\n"
+              "💡 调试建议:")
+        print("1. 检查配体标识符格式 (例如 B:603)")
+        print("2. 用文本编辑器打开PDB文件验证配体是否存在")
+        print("3. 尝试减小CUTOFF值")
