@@ -4,9 +4,10 @@
 # @Email : yzhan135@kent.edu
 # @File : Quantum_dock.py
 
-from pyscf import gto, scf, mcscf
+import numpy as np
+from pyscf import gto, scf, mcscf, tools
 from qiskit_nature.second_q.drivers import PySCFDriver
-from qiskit_nature.second_q.mappers import QubitConverter, ParityMapper
+from qiskit_nature.second_q.mappers import ParityMapper
 from qiskit_nature.second_q.transformers import ActiveSpaceTransformer
 
 def read_xyz_file(xyz_path):
@@ -56,10 +57,28 @@ if __name__=="__main__":
     mf = scf.RHF(mol)
     mf.kernel()
 
-    # 选择活性空间
-    n_active_orbitals = min(8, mol.nao)  # 不能超过总轨道数
-    n_active_electrons = min(10, mol.nelectron)  # 不能超过总电子数
+    # CASSCF 预计算
+    casscf_guess_orbitals = 20  # 先用 20 轨道计算密度矩阵
+    mc = mcscf.CASSCF(mf, casscf_guess_orbitals, mol.nelectron)
+    mc.kernel()
 
+    # 计算 Mulliken 电子密度，并导出 NOONs
+    dm = mc.make_rdm1()
+    noons = mc.mo_occ  # 获取自然轨道占据数 (NOONs)
+
+    # 选择 NOONs 在 0.02 - 1.98 之间的轨道
+    active_orbitals = [i for i, occ in enumerate(noons) if 0.02 < occ < 1.98]
+    n_active_orbitals = len(active_orbitals)
+
+    # 计算活性电子数
+    n_active_electrons = int(sum(np.round([occ for occ in noons if 0.02 < occ < 1.98])))
+    # **保证活性电子数 <= 2 * 活性轨道数**
+    n_active_electrons = min(n_active_electrons, 2 * n_active_orbitals)
+
+    print(f"自动选择的活性轨道数: {n_active_orbitals}")
+    print(f"自动选择的活性电子数: {n_active_electrons}")
+
+    # 重新运行 CASSCF 计算（优化活性空间）
     mc = mcscf.CASSCF(mf, n_active_orbitals, n_active_electrons)
     mc.kernel()
 
@@ -74,9 +93,8 @@ if __name__=="__main__":
     )
     problem = active_space.transform(problem)
 
-    # 量子比特转换
-    qubit_converter = QubitConverter(ParityMapper())
-    qubit_op = qubit_converter.convert(problem.hamiltonian)
+    qubit_mapper = ParityMapper()
+    qubit_op = qubit_mapper.map(problem.hamiltonian.second_q_op())
 
     print("Qubit Hamiltonian:", qubit_op)
 
