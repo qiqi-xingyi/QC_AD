@@ -4,10 +4,14 @@
 # @Email : yzhan135@kent.edu
 # @File : Quantum_dock.py
 
-from pyscf import gto, scf
 from qiskit_nature.second_q.drivers import PySCFDriver
 from qiskit_nature.second_q.mappers import ParityMapper
-from qiskit_nature.second_q.transformers import ActiveSpaceTransformer, FreezeCoreTransformer
+from qiskit_nature.second_q.transformers import ActiveSpaceTransformer
+# from qiskit_nature.second_q.circuit.library import UCCSD
+from vqe import VQE
+from qiskit_ibm_runtime import QiskitRuntimeService
+import json
+import csv
 
 
 def xyz_to_string(file_path):
@@ -18,6 +22,43 @@ def xyz_to_string(file_path):
     result = "; ".join(line.strip() for line in atom_lines)
 
     return result
+
+def read_config(file_path):
+
+    config = {}
+    try:
+        with open(file_path, "r") as file:
+            for line in file:
+                key, value = line.strip().split("=")
+                config[key.strip()] = value.strip()
+    except Exception as e:
+        print(f"Fail to read token file: {e}")
+        return None
+    return config
+
+def save_results(energy_list, optimized_params, energy_filename="energy_results.csv", params_filename="optimized_params.json"):
+    """
+    Saves the VQE energy list and optimized parameters.
+
+    Parameters:
+    - energy_list: List of computed energy values during optimization.
+    - optimized_params: Optimized parameters from VQE.
+    - energy_filename: Filename for saving energy values (CSV).
+    - params_filename: Filename for saving parameters (JSON).
+    """
+    # Save energy list as CSV
+    with open(energy_filename, "w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(["Iteration", "Energy"])
+        for i, energy in enumerate(energy_list):
+            writer.writerow([i + 1, energy])
+    print(f"Saved energy results to {energy_filename}")
+
+    # Save optimized parameters as JSON
+    params_dict = {"optimized_params": optimized_params.tolist()}
+    with open(params_filename, "w") as jsonfile:
+        json.dump(params_dict, jsonfile, indent=4)
+    print(f"Saved optimized parameters to {params_filename}")
 
 if __name__=="__main__":
 
@@ -41,6 +82,30 @@ if __name__=="__main__":
 
     print("Qubit Hamiltonian Terms:", len(qubit_op))
     print("Qubit Num:", qubit_op.num_qubits)
+
+############
+
+    config_path = "config.txt"
+
+    config = read_config(config_path)
+
+    service = QiskitRuntimeService(
+        channel='ibm_quantum',
+        instance=config["INSTANCE"],
+        token=config["TOKEN"]
+    )
+
+    qubits = qubit_op.num_qubits + 3
+
+    print("Qubit Num Chosen:", qubits)
+
+    vqe = VQE(service=service, hamiltonian=qubit_op, min_qubit_num=qubits, shots=50, maxiter=30)
+
+    ene_list, ground_state = vqe.run_vqe()
+
+
+
+
 
 
 
