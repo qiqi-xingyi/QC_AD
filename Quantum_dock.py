@@ -88,7 +88,7 @@ if __name__=="__main__":
     problem = driver.run()
     print('result:', problem)
 
-    transformer = ActiveSpaceTransformer(num_electrons=20, num_spatial_orbitals=18)
+    transformer = ActiveSpaceTransformer(num_electrons=10, num_spatial_orbitals=8)
     reduced_problem = transformer.transform(problem)
 
     print('reduced_problem:', reduced_problem)
@@ -101,7 +101,7 @@ if __name__=="__main__":
     print("Qubit Hamiltonian Terms:", len(qubit_op))
     print("Qubit Num:", qubit_op.num_qubits)
 
-############
+   ############
 
     config_path = "config.txt"
 
@@ -109,15 +109,23 @@ if __name__=="__main__":
 
     service = QiskitRuntimeService(
         channel='ibm_quantum',
-        instance=config["INSTANCE"],
-        token=config["TOKEN"]
+        instance='ibm-q-ccf/qradle-catalyzer/qradle-catalyzer',
+        token='98da9815dd1fbbe8d3010882e9a317f9495f2d61652ec33f19429c2136da25975a0728843211b0b389d731778c600c27e30b5edfeee39c318793a925668dbfae'
     )
+
+    # Or save your credentials on disk.
+    # QiskitRuntimeService.save_account(channel='ibm_quantum', instance='ibm-q-ccf/qradle-catalyzer/qradle-catalyzer', token='<IBM Quantum API key>')
+    # service = QiskitRuntimeService(
+    #     channel='ibm_quantum',
+    #     instance=config["INSTANCE"],
+    #     token=config["TOKEN"]
+    # )
 
     qubits = qubit_op.num_qubits + 3
 
     print("Qubit Num Chosen:", qubits)
 
-    vqe = VQE(service=service, hamiltonian=qubit_op, min_qubit_num=qubits, shots=50, maxiter=30)
+    vqe = VQE(service=service, hamiltonian=qubit_op, min_qubit_num=qubits, shots=50, maxiter=20)
 
     ene_list, ground_state = vqe.run_vqe()
 

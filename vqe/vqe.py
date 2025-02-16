@@ -39,7 +39,7 @@ class VQE:
         self.shots = shots
         self.backend = self._select_backend(min_quits=min_qubit_num)
         self.hamiltonian = hamiltonian
-        self.ansatz = EfficientSU2(self.hamiltonian.num_qubits,reps=8)
+        self.ansatz = EfficientSU2(self.hamiltonian.num_qubits)
         self.optimization_level = optimization_level
         self.cost_history_dict = {"prev_vector": None, "iters": 0, "cost_history": []}
         self.energy_list = []
