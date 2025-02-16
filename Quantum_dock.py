@@ -12,6 +12,7 @@ from vqe import VQE
 from qiskit_ibm_runtime import QiskitRuntimeService
 import json
 import csv
+import os
 
 
 def xyz_to_string(file_path):
@@ -36,33 +37,50 @@ def read_config(file_path):
         return None
     return config
 
-def save_results(energy_list, optimized_params, energy_filename="energy_results.csv", params_filename="optimized_params.json"):
+def save_results(energy_list, optimized_params, save_dir="results",
+                 energy_filename="energy_results.csv", params_filename="optimized_params.json"):
     """
-    Saves the VQE energy list and optimized parameters.
+    Saves the VQE energy list and optimized parameters with improvements:
+    1. Allows specifying the save directory.
+    2. Finds the lowest energy and writes it at the beginning.
+    3. Creates the directory if it does not exist.
 
     Parameters:
     - energy_list: List of computed energy values during optimization.
     - optimized_params: Optimized parameters from VQE.
+    - save_dir: Directory to save the files.
     - energy_filename: Filename for saving energy values (CSV).
     - params_filename: Filename for saving parameters (JSON).
     """
-    # Save energy list as CSV
-    with open(energy_filename, "w", newline="") as csvfile:
+
+    # Ensure the save directory exists
+    os.makedirs(save_dir, exist_ok=True)
+
+    # Get the minimum energy
+    min_energy = min(energy_list)
+    min_index = energy_list.index(min_energy) + 1  # Iteration starts from 1
+
+    # Save energy list as CSV (with lowest energy at the top)
+    energy_path = os.path.join(save_dir, energy_filename)
+    with open(energy_path, "w", newline="") as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(["Iteration", "Energy"])
+        writer.writerow(["Lowest Energy", min_energy])  # Write the lowest energy first
+        writer.writerow([])  # Empty row for clarity
         for i, energy in enumerate(energy_list):
             writer.writerow([i + 1, energy])
-    print(f"Saved energy results to {energy_filename}")
+    print(f"Saved energy results to {energy_path}")
 
     # Save optimized parameters as JSON
     params_dict = {"optimized_params": optimized_params.tolist()}
-    with open(params_filename, "w") as jsonfile:
+    params_path = os.path.join(save_dir, params_filename)
+    with open(params_path, "w") as jsonfile:
         json.dump(params_dict, jsonfile, indent=4)
-    print(f"Saved optimized parameters to {params_filename}")
+    print(f"Saved optimized parameters to {params_path}")
 
 if __name__=="__main__":
 
-    file_path = "2RV_subsyetem.xyz"
+    file_path = "2RV_reactive_fragments.xyz"
     converted_string = xyz_to_string(file_path)
     print(converted_string)
 
@@ -70,7 +88,7 @@ if __name__=="__main__":
     problem = driver.run()
     print('result:', problem)
 
-    transformer = ActiveSpaceTransformer(num_electrons=10, num_spatial_orbitals=8)
+    transformer = ActiveSpaceTransformer(num_electrons=20, num_spatial_orbitals=18)
     reduced_problem = transformer.transform(problem)
 
     print('reduced_problem:', reduced_problem)
@@ -102,6 +120,12 @@ if __name__=="__main__":
     vqe = VQE(service=service, hamiltonian=qubit_op, min_qubit_num=qubits, shots=50, maxiter=30)
 
     ene_list, ground_state = vqe.run_vqe()
+
+
+    save_results(energy_list=ene_list, optimized_params=ground_state, save_dir="my_results", energy_filename="energy_results_.csv", params_filename="optimized_params.json")
+
+
+
 
 
 
