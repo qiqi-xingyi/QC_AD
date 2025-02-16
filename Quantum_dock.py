@@ -80,7 +80,7 @@ def save_results(energy_list, optimized_params, save_dir="results",
 
 if __name__=="__main__":
 
-    file_path = "2RV_reactive_fragments.xyz"
+    file_path = "subsystem/2RV_reactive_fragments.xyz"
     converted_string = xyz_to_string(file_path)
     print(converted_string)
 
@@ -121,8 +121,7 @@ if __name__=="__main__":
 
     ene_list, ground_state = vqe.run_vqe()
 
-
-    save_results(energy_list=ene_list, optimized_params=ground_state, save_dir="my_results", energy_filename="energy_results_.csv", params_filename="optimized_params.json")
+    save_results(energy_list=ene_list, optimized_params=ground_state, save_dir="vqe_results", energy_filename="energy_results_1.csv", params_filename="optimized_params_1.json")
 
 
 
