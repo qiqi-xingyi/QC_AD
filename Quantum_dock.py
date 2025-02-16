@@ -21,7 +21,7 @@ def xyz_to_string(file_path):
 
 if __name__=="__main__":
 
-    file_path = "subsystems_xyz/sub_A_267_PHE/res_plus_ligand.xyz"
+    file_path = "2RV_subsyetem.xyz"
     converted_string = xyz_to_string(file_path)
     print(converted_string)
 
@@ -29,10 +29,7 @@ if __name__=="__main__":
     problem = driver.run()
     print('result:', problem)
 
-    # transformer = FreezeCoreTransformer()
-    # problem = transformer.transform(problem)
-
-    transformer = ActiveSpaceTransformer(num_electrons=40, num_spatial_orbitals=40)
+    transformer = ActiveSpaceTransformer(num_electrons=10, num_spatial_orbitals=8)
     reduced_problem = transformer.transform(problem)
 
     print('reduced_problem:', reduced_problem)
