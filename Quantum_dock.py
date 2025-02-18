@@ -80,15 +80,15 @@ def save_results(energy_list, optimized_params, save_dir="results",
 
 if __name__=="__main__":
 
-    file_path = "subsystem/2RV_reactive_fragments.xyz"
+    file_path = "subsystem/2RV_reactive_fragments_protein.xyz"
     converted_string = xyz_to_string(file_path)
     print(converted_string)
 
-    driver = PySCFDriver(atom=converted_string, charge=0, spin=0, basis="sto3g")
+    driver = PySCFDriver(atom=converted_string, charge=1, spin=0, basis="sto3g")
     problem = driver.run()
     print('result:', problem)
 
-    transformer = ActiveSpaceTransformer(num_electrons=10, num_spatial_orbitals=8)
+    transformer = ActiveSpaceTransformer(num_electrons=4, num_spatial_orbitals=2)
     reduced_problem = transformer.transform(problem)
 
     print('reduced_problem:', reduced_problem)
@@ -121,7 +121,7 @@ if __name__=="__main__":
 
     ene_list, ground_state = vqe.run_vqe()
 
-    save_results(energy_list=ene_list, optimized_params=ground_state, save_dir="vqe_results", energy_filename="energy_results_1.csv", params_filename="optimized_params_1.json")
+    save_results(energy_list=ene_list, optimized_params=ground_state, save_dir="vqe_results", energy_filename="energy_results_3.csv", params_filename="optimized_params_3.json")
 
 
 
