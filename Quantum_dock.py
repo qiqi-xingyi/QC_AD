@@ -14,7 +14,6 @@ import json
 import csv
 import os
 
-
 def xyz_to_string(file_path):
     with open(file_path, 'r') as file:
         lines = file.readlines()
