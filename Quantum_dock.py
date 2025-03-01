@@ -121,14 +121,3 @@ if __name__=="__main__":
     ene_list, ground_state = vqe.run_vqe()
 
     save_results(energy_list=ene_list, optimized_params=ground_state, save_dir="vqe_results", energy_filename="energy_results_3.csv", params_filename="optimized_params_3.json")
-
-
-
-
-
-
-
-
-
-
-
