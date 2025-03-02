@@ -77,7 +77,7 @@ kJ/mol:    {results['converted']['kJ/mol']:.4f}
 
 """
 
-    # 写入文件
+    # write file
     with open(filename, 'w') as f:
         f.write(content)
 
