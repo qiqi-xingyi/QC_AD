@@ -8,33 +8,35 @@ import re
 from collections import defaultdict
 import os
 
+
 class PDBStructure:
     """
-    用于读取并存储PDB文件中的信息，
-    包括:
-      - ATOM / HETATM 行 (原子坐标, 元素, 残基名, 链ID, 等)
-      - CONECT 行 (配体/其他HETATM原子间的键信息)
+    Used to read and store information from a PDB file,
+    including:
+      - ATOM / HETATM lines (atomic coordinates, elements, residue names, chain IDs, etc.)
+      - CONECT lines (bond information among ligand/other HETATM atoms)
 
-    可以后续为量子计算的片段化/构造分子坐标等做准备。
+    This can be used later for fragment-based quantum computations or for constructing
+    molecular coordinates.
     """
 
     def __init__(self, pdb_file=None):
-        self.atoms = []  # 存所有原子(包括ATOM/HETATM)
+        self.atoms = []  # Store all atoms (including ATOM/HETATM)
         self.conect_info = {}  # {atom_serial: [bonded_atom_serials]}
-        self.ter_records = []  # 存TER行出现的位置/信息
-        self.title = []  # 可存TITLE/HEADER等行 (可选)
-        self.other_lines = []  # 存储不处理的其他行
+        self.ter_records = []  # Store the positions/information of TER lines
+        self.title = []  # Can store TITLE/HEADER lines (optional)
+        self.other_lines = []  # Store other lines that are not processed
 
         if pdb_file:
             self.read_pdb(pdb_file)
 
     def read_pdb(self, filepath):
         """
-        读取PDB文件，对ATOM/HETATM/CONECT/TER等感兴趣的记录进行解析。
+        Read a PDB file and parse the records of interest such as ATOM/HETATM/CONECT/TER.
         """
         with open(filepath, 'r') as f:
             for line in f:
-                record_type = line[0:6].strip()  # 例如"ATOM","HETATM","CONECT","TER"
+                record_type = line[0:6].strip()  # e.g., "ATOM", "HETATM", "CONECT", "TER"
 
                 if record_type in ("ATOM", "HETATM"):
                     atom_data = self._parse_atom_line(line)
@@ -47,53 +49,52 @@ class PDBStructure:
                     self.ter_records.append(line.strip())
 
                 else:
-                    # 也许保留其他记录(HEADER,TITLE,REMARK,END等)以备后用
+                    # Possibly keep other records (HEADER, TITLE, REMARK, END, etc.) for later use
                     self.other_lines.append(line.rstrip("\n"))
 
     def _parse_atom_line(self, line):
         """
-        解析ATOM/HETATM行的固定宽度字段, 返回一个dict或自定义的Atom对象.
-        参考PDB format对各列字段的定义.
+        Parse the fixed-width fields of an ATOM/HETATM line and return a dict
+        (or a custom Atom object). Refer to the PDB format for each field definition.
         """
 
-        # 以下针对固定宽度的列进行截取/strip
-        # 下标(基于0)    长度
-        #  0-5   ->  record type (ATOM/HETATM)
-        #  6-11  ->  serial (atom序号)
-        # 12     ->  空格
-        # 12-16  ->  atom name
-        # 17     ->  altLoc
-        # 17-20  ->  resName
-        # 21     ->  chainID
-        # 22-25  ->  resSeq
-        # 26     ->  iCode
-        # 30-37  ->  x
-        # 38-45  ->  y
-        # 46-53  ->  z
-        # 54-59  ->  occupancy
-        # 60-65  ->  tempFactor
-        # 76-77  ->  element
-        # 78-79  ->  charge
-        # 不同PDB版本略有差异,这里做一个常见处理.
+        # Below we slice by fixed-width columns and strip:
+        # Indexes (0-based)   Meaning
+        #  0-5    -> record type (ATOM/HETATM)
+        #  6-11   -> serial (atom index)
+        #  12     -> space
+        #  12-16  -> atom name
+        #  17     -> altLoc
+        #  17-20  -> resName
+        #  21     -> chainID
+        #  22-25  -> resSeq
+        #  26     -> iCode
+        #  30-37  -> x
+        #  38-45  -> y
+        #  46-53  -> z
+        #  54-59  -> occupancy
+        #  60-65  -> tempFactor
+        #  76-77  -> element
+        #  78-79  -> charge
+        # Different PDB versions may vary. This is a common approach.
 
-        atom_serial = int(line[6:11].strip())  # 原子序号
-        atom_name = line[12:16].strip()  # 原子名
-        alt_loc = line[16].strip()  # 可选
-        res_name = line[17:20].strip()  # 残基名
-        chain_id = line[21].strip()  # 链ID
-        res_seq = line[22:26].strip()  # 残基序号(注意可能包含文字)
-        i_code = line[26].strip()  # 插入代码
-        x = float(line[30:38].strip())  # x坐标
-        y = float(line[38:46].strip())  # y坐标
-        z = float(line[46:54].strip())  # z坐标
-        occupancy = line[54:60].strip()  # 占有率
-        temp_factor = line[60:66].strip()  # B因子
+        atom_serial = int(line[6:11].strip())  # Atom index
+        atom_name = line[12:16].strip()  # Atom name
+        alt_loc = line[16].strip()  # Optional
+        res_name = line[17:20].strip()  # Residue name
+        chain_id = line[21].strip()  # Chain ID
+        res_seq = line[22:26].strip()  # Residue sequence (might contain letters)
+        i_code = line[26].strip()  # Insertion code
+        x = float(line[30:38].strip())  # x-coordinate
+        y = float(line[38:46].strip())  # y-coordinate
+        z = float(line[46:54].strip())  # z-coordinate
+        occupancy = line[54:60].strip()  # Occupancy
+        temp_factor = line[60:66].strip()  # B-factor
         element = line[76:78].strip() if len(line) >= 78 else ""
         charge = line[78:80].strip() if len(line) >= 80 else ""
 
-        # 构造成dict(也可用自定义类)
         atom_dict = {
-            "record_type": line[0:6].strip(),  # "ATOM"/"HETATM"
+            "record_type": line[0:6].strip(),  # "ATOM" or "HETATM"
             "serial": atom_serial,
             "name": atom_name,
             "altLoc": alt_loc,
@@ -113,15 +114,15 @@ class PDBStructure:
 
     def _parse_conect_line(self, line):
         """
-        解析CONECT行, 将配体/异质原子之间的连接关系记录下来.
-        一般格式:
+        Parse a CONECT line and record the bonding relationships among ligand/hetero atoms.
+        General format:
           "CONECT" + atom_serial + bonded_serial(s) ...
-        例如: CONECT  455  458  472  478
+        For example: CONECT  455  458  472  478
         """
 
-        # 取固定宽度,可以也只取[6:]按空格split
+        # Split by whitespace (could also consider fixed-width).
         fields = line.split()
-        # fields[0] 应该是 "CONECT"
+        # fields[0] should be "CONECT"
         if len(fields) < 2:
             return
 
@@ -135,22 +136,22 @@ class PDBStructure:
 
         if atom_serial_main not in self.conect_info:
             self.conect_info[atom_serial_main] = set()
-        # 把bonded_list加入
+        # Add bonded_list
         for b in bonded_list:
             self.conect_info[atom_serial_main].add(b)
 
-        # 如果需要，我们也可以做对称:
+        # If necessary, make it symmetric:
         for b in bonded_list:
             if b not in self.conect_info:
                 self.conect_info[b] = set()
             self.conect_info[b].add(atom_serial_main)
 
-    # ========== 一些查询辅助函数 ==========
+    # ========== Some helper query functions ==========
 
     def get_atoms(self, record_type=None, chainID=None, resName=None):
         """
-        简易查询函数: 根据record_type("ATOM"/"HETATM"), chainID, resName等条件
-        返回匹配的原子列表.
+        A simple query function: returns a list of atoms that match the given conditions
+        (record_type="ATOM"/"HETATM", chainID, resName).
         """
         results = []
         for atom in self.atoms:
@@ -165,8 +166,9 @@ class PDBStructure:
 
     def group_by_residue(self):
         """
-        把ATOM/HETATM分组: (chainID, resSeq, resName) -> list of atoms
-        方便后续识别蛋白片段与配体, 以及做坐标封端等处理.
+        Group ATOM/HETATM by (chainID, resSeq, resName) -> list of atoms,
+        to facilitate subsequent recognition of protein fragments and ligands,
+        as well as coordinate modifications like capping.
         """
         residue_dict = defaultdict(list)
         for atom in self.atoms:
@@ -176,12 +178,12 @@ class PDBStructure:
 
     def is_ligand(self, resName):
         """
-        简易判断: 如果resName是 'HOH'或蛋白标准三字母(ALA, PHE, GLY...),
-        则认为不是配体. 否则可能是配体(例如 '2RV').
+        A simple judgment: if resName is 'HOH' or a standard protein residue
+        (e.g., ALA, PHE, GLY...), then it's considered not a ligand. Otherwise,
+        it may be a ligand (e.g., '2RV').
 
-        实际可维护一个标准残基列表 / ligand列表 / water等.
+        In actual practice, one might maintain a standard residue list / ligand list / waters, etc.
         """
-        # 粗略处理:
         protein_residues = {
             'ALA', 'ARG', 'ASN', 'ASP', 'CYS', 'GLN', 'GLU', 'GLY', 'HIS',
             'ILE', 'LEU', 'LYS', 'MET', 'PHE', 'PRO', 'SER', 'THR', 'TRP', 'TYR', 'VAL',
@@ -193,9 +195,11 @@ class PDBStructure:
 
     def get_xyz_geometry(self, atoms_list):
         """
-        将给定 atoms_list(里面是 dict {x,y,z,element,...})
-        转成量子流程常用的 geometry=[(symbol,(x,y,z)),...].
-        如果 element为空,可回退 atom_name首字母.
+        Convert the given atoms_list (which is a list of dicts like {x,y,z,element,...})
+        into the geometry format commonly used in quantum workflows:
+        geometry = [(symbol, (x, y, z)), ...]
+
+        If element is empty, fallback to the first letter of atom_name.
         """
         out_geometry = []
         for atm in atoms_list:
@@ -206,29 +210,30 @@ class PDBStructure:
 
     def export_subsystems_for_quantum(self, output_dir, ligand_resname="2RV"):
         """
-        读取自身解析得到的atoms信息，将全PDB系统分解成若干子系统，
-        并将每个子系统的原子坐标以XYZ文件形式输出到指定文件夹(output_dir).
+        Using the parsed atoms, decompose the entire PDB system into several subsystems,
+        and output the atomic coordinates of each subsystem as .xyz files into the specified
+        directory (output_dir).
 
-        示例逻辑:
-        1) 查找所有蛋白残基(默认: 标准氨基酸, chain==A等),
-        2) 查找配体(resName == ligand_resname),
-        3) 对每个蛋白残基 + 配体 => 生成xyz文件,
-        4) 也输出该残基单独xyz, 以及配体单独xyz(只一次).
+        Example logic:
+        1) Find all protein residues (by default: standard amino acids, chain == A, etc.),
+        2) Find the ligand (resName == ligand_resname),
+        3) For each protein residue + ligand => generate an xyz file,
+        4) Also output the residue alone as xyz, and the ligand alone as xyz (only once).
 
-        可根据需要作微调.
+        This can be adjusted as needed.
         """
-        # 0) 如果文件夹不存在就创建
+        # 0) Create the folder if it does not exist
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        # 1) 将原子按 (chain,resSeq,resName) 分组
+        # 1) Group atoms by (chain, resSeq, resName)
         residue_dict = defaultdict(list)
         for atm in self.atoms:
             key = (atm["chainID"], atm["resSeq"], atm["resName"])
             residue_dict[key].append(atm)
 
-        # 2) 识别配体碎片(假设resName==ligand_resname)
-        #    也可能有多个配体, 这里简化只取第一个
+        # 2) Identify the ligand fragment (assuming resName == ligand_resname).
+        #    If there are multiple ligands, we simplify by just taking the first.
         ligand_key = None
         ligand_atoms = []
         for (chain, rseq, rname), at_list in residue_dict.items():
@@ -240,55 +245,64 @@ class PDBStructure:
         if not ligand_atoms:
             print(f"[Warning] No ligand with resName={ligand_resname} found in PDB.")
         else:
-            # 先输出一下配体单独的XYZ(如果需要)
-            ligand_filename = os.path.join(output_dir,
-                                           f"ligand_{ligand_key[0]}_{ligand_key[1]}_{ligand_key[2]}.xyz")
+            # Export the ligand alone as .xyz (if needed)
+            ligand_filename = os.path.join(
+                output_dir,
+                f"ligand_{ligand_key[0]}_{ligand_key[1]}_{ligand_key[2]}.xyz"
+            )
             self._write_xyz(ligand_atoms, ligand_filename,
                             comment=f"Ligand {ligand_key}")
 
-        # 3) 输出每个蛋白残基(当子系统)
-        #    定义: 标准氨基酸 or chain=='A' etc. 这里举例只排除 "HOH" 和 ligand_resname
+        # 3) Output each protein residue (as a subsystem).
+        #    For example, consider standard amino acids or chain=='A', etc.
+        #    Here we just exclude "HOH" and ligand_resname.
         protein_keys = []
         for key in residue_dict.keys():
             chain, rseq, rname = key
-            # 简单判断: 如果 rname != 'HOH' and != ligand_resname => 视作蛋白
+            # A simple check: if rname != 'HOH' and != ligand_resname => treat as protein
             if rname not in ("HOH", ligand_resname):
                 protein_keys.append(key)
 
-        # 4) 针对每个蛋白残基 => 输出单独XYZ, 以及与配体组合XYZ
+        # 4) For each protein residue => output the residue alone as .xyz, and also
+        #    a combined .xyz with the ligand
         for key in protein_keys:
             chain, rseq, rname = key
             res_atoms = residue_dict[key]
 
-            # 4.1 输出蛋白残基单独xyz
+            # 4.1 Export single protein residue
             res_filename = os.path.join(output_dir, f"res_{chain}_{rseq}_{rname}.xyz")
             self._write_xyz(res_atoms, res_filename,
                             comment=f"Single residue: {chain} {rseq} {rname}")
 
-            # 4.2 如果有配体 => 输出蛋白残基 + 配体
+            # 4.2 If the ligand exists => export residue + ligand
             if ligand_atoms:
                 combined = res_atoms + ligand_atoms
-                comb_filename = os.path.join(output_dir, f"res_{chain}_{rseq}_{rname}_plus_ligand.xyz")
-                self._write_xyz(combined, comb_filename,
-                                comment=f"Residue {chain} {rseq} {rname} + ligand {ligand_key}")
+                comb_filename = os.path.join(
+                    output_dir,
+                    f"res_{chain}_{rseq}_{rname}_plus_ligand.xyz"
+                )
+                self._write_xyz(
+                    combined, comb_filename,
+                    comment=f"Residue {chain} {rseq} {rname} + ligand {ligand_key}"
+                )
 
         print(f"[Done] Exported subsystem XYZ files into '{output_dir}'.")
 
     # ---------------------------------
-    # 以下是一个辅助写xyz的方法
+    # A helper method for writing XYZ
     # ---------------------------------
     def _write_xyz(self, atoms_list, xyz_path, comment=""):
         """
-        将给定 atoms_list(原子dict的列表) 写成 .xyz 文件.
-        coords => x,y,z
-        element => element or fallback.
+        Write the given atoms_list (a list of dicts) to a .xyz file.
+        coords => x, y, z
+        element => element or fallback symbol.
 
-        .xyz格式:
-          第一行: 原子数
-          第二行: 注释(可选)
-          第三行起: symbol  x  y  z
+        .xyz format:
+          First line: number of atoms
+          Second line: comment (optional)
+          From the third line onward: symbol  x  y  z
         """
-        # 准备 geometry data
+        # Prepare the geometry data
         geometry = []
         for atm in atoms_list:
             symbol = atm["element"] if atm["element"] else atm["name"][0]
@@ -305,25 +319,25 @@ class PDBStructure:
 
     def export_subsystems_for_quantum_in_subfolders(self, output_dir, ligand_resname="2RV"):
         """
-        将蛋白-配体体系分解为 [每个氨基酸(残基) + 配体] 的子系统，
-        并在 output_dir 下为每个子系统创建一个专门的文件夹，里面存:
-          - res.xyz (该残基单独)
-          - ligand.xyz (配体单独)
-          - res_plus_ligand.xyz (二者组合)
+        Decompose the protein-ligand system into subsystems of [each amino acid (residue) + ligand],
+        and create a dedicated subfolder for each subsystem under output_dir. Inside each subfolder:
+          - res.xyz (the residue alone)
+          - ligand.xyz (the ligand alone)
+          - res_plus_ligand.xyz (the combined system)
 
-        这样可方便二体展开或结合能计算的后续处理。
+        This is convenient for subsequent calculations such as two-body expansions or binding energy computations.
         """
-        # 如果output_dir不存在就创建
+        # Create output_dir if it doesn't exist
         if not os.path.exists(output_dir):
             os.makedirs(output_dir)
 
-        # 1) 将原子按 (chain,resSeq,resName) 分组
+        # 1) Group atoms by (chainID, resSeq, resName)
         residue_dict = defaultdict(list)
         for atm in self.atoms:
             key = (atm["chainID"], atm["resSeq"], atm["resName"])
             residue_dict[key].append(atm)
 
-        # 2) 找到配体(假设resName=ligand_resname)
+        # 2) Locate the ligand (assuming resName=ligand_resname)
         ligand_key = None
         ligand_atoms = []
         for (chain, rseq, rname), at_list in residue_dict.items():
@@ -337,45 +351,40 @@ class PDBStructure:
         else:
             print(f"Found ligand {ligand_key}, #atoms={len(ligand_atoms)}")
 
-        # 3) 准备输出：对每个蛋白残基 => 创建子文件夹 => 写 xyz
-        #    这里简单过滤: 排除 HOH(水) 与 ligand_resname
+        # 3) Prepare to output: for each protein residue => create a subfolder => write .xyz files
+        #    Here, we exclude HOH (water) and ligand_resname from protein residues.
         protein_keys = []
         for (chain, rseq, rname) in residue_dict.keys():
             if rname not in ("HOH", ligand_resname):
                 protein_keys.append((chain, rseq, rname))
         protein_keys.sort()
 
-        # 4) 逐个处理蛋白残基
+        # 4) Process each protein residue
         for key in protein_keys:
             chain, rseq, rname = key
             res_atoms = residue_dict[key]
-            # 子系统文件夹名：如 sub_A_267_PHE
+            # Subsystem folder name, e.g., sub_A_267_PHE
             subfolder_name = f"sub_{chain}_{rseq}_{rname}"
             subfolder_path = os.path.join(output_dir, subfolder_name)
             if not os.path.exists(subfolder_path):
                 os.makedirs(subfolder_path)
 
-            # 4.1 输出res.xyz (该残基单独)
+            # 4.1 Write res.xyz (the residue alone)
             res_filename = os.path.join(subfolder_path, "res.xyz")
             self._write_xyz(res_atoms, res_filename,
                             comment=f"Residue {chain} {rseq} {rname}")
 
-            # 4.2 如果有配体 => 写 ligand.xyz (同一个子文件夹)
+            # 4.2 If we have a ligand => write ligand.xyz in the same subfolder
             if ligand_atoms:
                 ligand_filename = os.path.join(subfolder_path, "ligand.xyz")
-                # 这里可以把配体也单独写一次
+                # Here we can write the ligand alone as well
                 self._write_xyz(ligand_atoms, ligand_filename,
                                 comment=f"Ligand {ligand_key}")
 
-                # 4.3 写res_plus_ligand.xyz
+                # 4.3 Write res_plus_ligand.xyz
                 combined_atoms = res_atoms + ligand_atoms
                 comb_filename = os.path.join(subfolder_path, "res_plus_ligand.xyz")
                 self._write_xyz(combined_atoms, comb_filename,
                                 comment=f"Residue+Ligand => {key}+{ligand_key}")
 
         print(f"[Done] Exported all subsystems into subfolders under '{output_dir}'.")
-
-
-
-
-
