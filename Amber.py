@@ -4,18 +4,13 @@
 # @Email : yzhan135@kent.edu
 # @File : Amber.py
 
-"""
-基于MM/PBSA分解能量自动选择关键残基
-用法：python select_subsystem.py decomp.dat [-c CUTOFF] [-o OUTPUT]
-"""
-
 import argparse
 import pandas as pd
 from Bio.PDB import PDBParser, PDBIO, Select
 
 
 class EnergyBasedSelector(Select):
-    """ 基于能量贡献的残基选择器 """
+    """ Residue selector based on energy contributions """
 
     def __init__(self, energy_data, cutoff=-1.0):
         self.key_residues = set(
@@ -31,18 +26,18 @@ class EnergyBasedSelector(Select):
 
 
 def parse_decomp_file(filename):
-    """ 解析AMBER分解能量文件 """
+    """ Parse the AMBER decomposition energy file """
     try:
-        # 自动检测文件格式
+        # Automatically detect file format
         with open(filename) as f:
             first_line = f.readline().strip()
 
         if first_line.startswith('Residue'):
-            # 新版MMPBSA格式
+            # Newer MMPBSA format
             df = pd.read_csv(filename, delim_whitespace=True, skiprows=1)
             df.columns = [c.strip() for c in df.columns]
         else:
-            # 旧版固定宽度格式
+            # Older fixed-width format
             df = pd.read_fwf(
                 filename,
                 colspecs=[(0, 7), (8, 13), (14, 20), (21, 28), (29, 36), (37, 44)],
@@ -52,34 +47,34 @@ def parse_decomp_file(filename):
 
         return df
     except Exception as e:
-        raise ValueError(f"文件解析失败: {str(e)}")
+        raise ValueError(f"File parsing failed: {str(e)}")
 
 
 def main():
-    parser = argparse.ArgumentParser(description='基于能量贡献选择子体系')
-    parser.add_argument('input', help='MMPBSA分解结果文件')
+    parser = argparse.ArgumentParser(description='Select subsystem based on energy contributions')
+    parser.add_argument('input', help='MMPBSA decomposition result file')
     parser.add_argument('-c', '--cutoff', type=float, default=-1.0,
-                        help='能量阈值(kcal/mol)，默认-1.0')
+                        help='Energy threshold (kcal/mol), default -1.0')
     parser.add_argument('-o', '--output', default='./subsystem/subsystem.pdb',
-                        help='输出PDB文件名')
+                        help='Output PDB filename')
     parser.add_argument('-s', '--structure', default='./data_set/EC5026_5Apart.pdb',
-                        help='原始PDB结构文件')
+                        help='Original PDB structure file')
     args = parser.parse_args()
 
-    # 步骤1：解析能量分解文件
+    # Step 1: Parse energy decomposition file
     try:
         energy_data = parse_decomp_file(args.input)
-        print(f"成功解析能量数据，共{len(energy_data)}个残基")
+        print(f"Successfully parsed energy data, total of {len(energy_data)} residues")
     except Exception as e:
-        print(f"错误: {str(e)}")
+        print(f"Error: {str(e)}")
         return
 
-    # 步骤2：选择关键残基
+    # Step 2: Select key residues
     selector = EnergyBasedSelector(energy_data, args.cutoff)
     selected_res = len(selector.key_residues)
-    print(f"选择{selected_res}个关键残基 (ΔG < {args.cutoff} kcal/mol)")
+    print(f"Selected {selected_res} key residues (ΔG < {args.cutoff} kcal/mol)")
 
-    # 步骤3：从原始结构提取子体系
+    # Step 3: Extract subsystem from original structure
     try:
         parser = PDBParser()
         structure = parser.get_structure('original', args.structure)
@@ -88,13 +83,13 @@ def main():
         io.set_structure(structure)
         io.save(args.output, selector)
 
-        print(f"子体系已保存至 {args.output}")
-        print("\nPyMOL查看命令:")
+        print(f"Subsystem has been saved to {args.output}")
+        print("\nCommands for PyMOL viewing:")
         print(f"load {args.output}")
         print(f"load {args.structure}, original")
         print("align subsystem, original")
     except Exception as e:
-        print(f"结构处理错误: {str(e)}")
+        print(f"Structure processing error: {str(e)}")
 
 
 if __name__ == '__main__':
