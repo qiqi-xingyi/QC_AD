@@ -27,17 +27,7 @@ def hartree_to_units(energy_hartree):
     }
 
 def compute_binding_energy(E_complex, E_protein, E_ligand):
-    """
-    计算结合能 (Binding Energy).
 
-    参数:
-    - E_complex: 复合体系的最低能量
-    - E_protein: 游离蛋白的最低能量
-    - E_ligand: 游离配体的最低能量
-
-    返回:
-    - E_binding: 结合能 (负值表示有利结合)
-    """
     E_binding = E_complex - (E_protein + E_ligand)
     return E_binding
 
