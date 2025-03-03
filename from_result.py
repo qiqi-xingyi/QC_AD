@@ -76,7 +76,6 @@ kcal/mol:  {results['converted']['kcal/mol']:.4f}
 kJ/mol:    {results['converted']['kJ/mol']:.4f}
 
 """
-
     # write file
     with open(filename, 'w') as f:
         f.write(content)
