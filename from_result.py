@@ -43,19 +43,12 @@ def compute_binding_energy(E_complex, E_protein, E_ligand):
 
 
 def save_results(results, filename=None):
-    """
-    将计算结果保存到文本文件
 
-    参数:
-    - results: 包含所有计算结果的字典
-    - filename: 自定义文件名 (可选)
-    """
-    # 生成带时间戳的默认文件名
     if not filename:
         timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
         filename = f"binding_energy_results_{timestamp}.txt"
 
-    # 构建文件内容
+
     content = f"""\
 ================================
  Binding Energy Calculation Report
