@@ -92,6 +92,7 @@ if __name__=="__main__":
 
     print('reduced_problem:', reduced_problem)
 
+
     op = reduced_problem.hamiltonian.second_q_op()
 
     mapper = ParityMapper()
