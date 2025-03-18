@@ -367,7 +367,7 @@ def main():
     # 3) 构造 PySCF Mole(完整体系)
     pdb_path = "data_set/data/2_benchmark_binidng_sites/1c5z/1c5z_Binding_mode.pdb"
     total_charge = 0
-    spin = 0
+    spin = 1
     mol = build_full_mol_from_pdb(pdb_path, charge=total_charge, spin=spin, basis="sto3g")
 
     # 4) 全体系SCF
