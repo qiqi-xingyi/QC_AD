@@ -359,13 +359,13 @@ def main():
     )
 
     # 2) parse PLIP => residue_list, ligand_info
-    plip_file = "./data_set/data/2_benchmark_binidng_sites/1c5z/1c5z_interaction.txt"
+    plip_file = "data_set/data/2_benchmark_binidng_sites/1c5z/1c5z_interaction.txt"
     residue_list, ligand_info = parse_plip_interaction_file(plip_file)
     print("Residues from PLIP:", residue_list)
     print("Ligand from PLIP:", ligand_info)
 
     # 3) 构造 PySCF Mole(完整体系)
-    pdb_path = "./data_set/data/2_benchmark_binidng_sites/1c5z/1c5z_Binding_mode.pdb"
+    pdb_path = "data_set/data/2_benchmark_binidng_sites/1c5z/1c5z_Binding_mode.pdb"
     total_charge = 0
     spin = 0
     mol = build_full_mol_from_pdb(pdb_path, charge=total_charge, spin=spin, basis="sto3g")

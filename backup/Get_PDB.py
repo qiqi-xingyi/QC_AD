@@ -8,7 +8,7 @@ from utils import PDBStructure
 
 if __name__ == "__main__":
 
-    pdb_file = "data_set/EC5026_5Apart.pdb"
+    pdb_file = "../data_set/EC5026_5Apart.pdb"
 
     output_dir = "subsystems_xyz"
 
