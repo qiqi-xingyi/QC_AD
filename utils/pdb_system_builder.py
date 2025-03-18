@@ -21,7 +21,7 @@ class PDBSystemBuilder:
                 if line.startswith("ATOM") or line.startswith("HETATM"):
                     atom_element = line[76:78].strip()
                     if not atom_element:
-                        atom_element = line[12:16].strip(" 1234567890")
+                        atom_element = line[12:16].strip("None")
                     x = float(line[30:38])
                     y = float(line[38:46])
                     z = float(line[46:54])
