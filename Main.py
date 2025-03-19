@@ -14,6 +14,7 @@ from utils.pdb_system_builder import PDBSystemBuilder
 from utils.active_space_selector import ActiveSpaceSelector
 from utils.qc_vqe_solver import QCVQESolver
 
+from qiskit_ibm_runtime import QiskitRuntimeService
 from qiskit_nature.units import DistanceUnit
 from qiskit_nature.second_q.drivers import PySCFDriver
 from qiskit_nature.second_q.circuit.library import HartreeFock, UCCSD
@@ -24,31 +25,31 @@ def main():
 
     # 1) read config
     cfg = ConfigManager("config.txt")
-    from qiskit_ibm_runtime import QiskitRuntimeService
+
     service = QiskitRuntimeService(
         channel='ibm_quantum',
         instance=cfg.get("INSTANCE"),
         token=cfg.get("TOKEN")
     )
 
-    # 2) 解析 PLIP
-    plip_file = "./data_set/data/2_benchmark_binidng_sites/1c5z/1c5z_interaction.txt"
+    # 2) analysis PLIP file
+    plip_file = "./data_set/1c5z/1c5z_interaction.txt"
     parser = PLIPParser(plip_file)
     residue_list, ligand_info = parser.parse_residues_and_ligand()
     print("Residues:", residue_list)
     print("Ligand:", ligand_info)
 
-    # 3) 构建 PySCF Mole
-    builder = PDBSystemBuilder("./data_set/data/2_benchmark_binidng_sites/1c5z/1c5z_Binding_mode.pdb",
+    # 3) create PySCF Mole
+    builder = PDBSystemBuilder("./data_set/1c5z/1c5z_Binding_mode.pdb",
                                charge=0, spin=0, basis="sto3g")
     mol = builder.build_mole()
 
-    # # 4) run SCF + active space selection
-    # selector = ActiveSpaceSelector(threshold=0.2)
-    # mf = selector.run_scf(mol)
-    # active_e, mo_count, mo_start = selector.select_active_space(mol, mf, residue_list, ligand_info,
-    #                                                            "./data_set/data/2_benchmark_binidng_sites/1c5z/1c5z_Binding_mode.pdb")
-    #
+    # 4) run SCF + active space selection
+    selector = ActiveSpaceSelector(threshold=0.2)
+    mf = selector.run_scf(mol)
+    active_e, mo_count, mo_start = selector.select_active_space(mol, mf, residue_list, ligand_info,
+                                                               "./data_set/data/2_benchmark_binidng_sites/1c5z/1c5z_Binding_mode.pdb")
+
     # mo_end = mo_start + mo_count
     # print(f"Active space => e={active_e}, mo range=[{mo_start}, {mo_end})")
     #

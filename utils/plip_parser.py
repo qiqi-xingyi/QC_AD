@@ -13,7 +13,7 @@ class PLIPParser:
 
     def parse_residues_and_ligand(self):
         """
-        读取 self.plip_file, 返回 (residue_list, ligand_info).
+        read self.plip_file, return (residue_list, ligand_info).
         residue_list: [("SER","B","190"), ("VAL","B","213"), ...]
         ligand_info : ("MOL", "A", "1")
         """
