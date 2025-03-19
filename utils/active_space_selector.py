@@ -170,5 +170,5 @@ class ActiveSpaceSelector:
         num_selected = max_idx - min_idx + 1
 
         # active_orbitals_list = list(range(min_idx, max_idx + 1))
-        active_orbitals_list = list(range(0, 20))
+        active_orbitals_list = list(range(0, 22))
         return active_e, num_selected, min_idx, active_orbitals_list
