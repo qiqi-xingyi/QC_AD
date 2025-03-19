@@ -54,9 +54,13 @@ def main():
     mo_end = mo_start + mo_count
     print(f"Active space => e={active_e}, mo range=[{mo_start}, {mo_end})")
 
-    # 5) 构造 Qiskit Nature Problem
+    atom_str_list = []
+    for (sym, (x, y, z)) in mol.atom:
+        atom_str_list.append(f"{sym} {x} {y} {z}")
+
+    # 5) create Qiskit Nature Problem
     driver = PySCFDriver(
-        atom=mol.atom,
+        atom=atom_str_list,
         basis=mol.basis,
         charge=mol.charge,
         spin=mol.spin,
