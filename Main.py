@@ -40,70 +40,79 @@ def main():
     print("Ligand:", ligand_info)
 
     # 3) create PySCF Mole
-    builder = PDBSystemBuilder("./data_set/1c5z/1c5z_Binding_mode.pdb",
-                               charge=0, spin=0, basis="sto3g")
+    pdb_path = "./data_set/data/2_benchmark_binidng_sites/1c5z/1c5z_Binding_mode.pdb"
+
+    builder = PDBSystemBuilder(pdb_path, charge=1, spin=0, basis="sto3g")
     mol = builder.build_mole()
 
     # 4) run SCF + active space selection
     selector = ActiveSpaceSelector(threshold=0.2)
     mf = selector.run_scf(mol)
-    active_e, mo_count, mo_start = selector.select_active_space(mol, mf, residue_list, ligand_info,
-                                                               "./data_set/data/2_benchmark_binidng_sites/1c5z/1c5z_Binding_mode.pdb")
 
-    # mo_end = mo_start + mo_count
-    # print(f"Active space => e={active_e}, mo range=[{mo_start}, {mo_end})")
-    #
-    # # 5) 构造 Qiskit Nature Problem
-    # driver = PySCFDriver(
-    #     atom=mol.atom,
-    #     basis=mol.basis,
-    #     charge=mol.charge,
-    #     spin=mol.spin,
-    #     unit=DistanceUnit.ANGSTROM
-    # )
-    # es_problem = driver.run()
-    #
-    # # 6) ActiveSpaceTransformer
-    # ast = ActiveSpaceTransformer(
-    #     num_electrons=active_e,
-    #     num_spatial_orbitals=mo_count,
-    #     active_window=(mo_start, mo_end)
-    # )
-    # red_problem = ast.transform(es_problem)
-    #
-    # op = red_problem.hamiltonian.second_q_op()
-    # mapper = ParityMapper()
-    # qubit_op = mapper.map(op)
-    #
-    # # 7) 构造 ansatz
-    # n_so = red_problem.num_spatial_orbitals
-    # alpha = red_problem.num_alpha
-    # beta  = red_problem.num_beta
-    # hf_init = HartreeFock(n_so, (alpha,beta), mapper)
-    # ansatz = UCCSD(
-    #     num_spatial_orbitals=n_so,
-    #     num_particles=(alpha,beta),
-    #     mapper=mapper,
-    #     initial_state=hf_init
-    # )
-    #
-    # # 8) VQE
-    # solver = QCVQESolver(service, shots=100, min_qubit_num=30, maxiter=15, optimization_level=3)
-    # energies, best_params = solver.run_vqe(qubit_op, ansatz)
-    # final_energy = energies[-1]
-    # print("Final E:", final_energy)
-    #
-    # # 9) 保存结果
-    # os.makedirs("results_projection", exist_ok=True)
-    # with open("results_projection/energy.csv","w",newline="") as cf:
-    #     import csv
-    #     writer=csv.writer(cf)
-    #     writer.writerow(["Iter","Energy"])
-    #     for i,e in enumerate(energies):
-    #         writer.writerow([i+1,e])
-    # with open("results_projection/params.json","w") as jf:
-    #     import json
-    #     json.dump({"best_params":best_params.tolist()}, jf, indent=4)
+    active_e, mo_count, mo_start = selector.select_active_space(mol, mf, residue_list, ligand_info, pdb_path)
+
+    mo_end = mo_start + mo_count
+    print(f"Active space => e={active_e}, mo range=[{mo_start}, {mo_end})")
+
+    # 5) 构造 Qiskit Nature Problem
+    driver = PySCFDriver(
+        atom=mol.atom,
+        basis=mol.basis,
+        charge=mol.charge,
+        spin=mol.spin,
+        unit=DistanceUnit.ANGSTROM
+    )
+    es_problem = driver.run()
+
+    # 6) ActiveSpaceTransformer
+    ast = ActiveSpaceTransformer(
+        num_electrons=active_e,
+        num_spatial_orbitals=mo_count,
+        active_orbitals=(mo_start, mo_end)
+    )
+    red_problem = ast.transform(es_problem)
+
+    op = red_problem.hamiltonian.second_q_op()
+    mapper = ParityMapper()
+    qubit_op = mapper.map(op)
+
+    # 7) create ansatz
+    n_so = red_problem.num_spatial_orbitals
+    alpha = red_problem.num_alpha
+    beta  = red_problem.num_beta
+    hf_init = HartreeFock(n_so, (alpha,beta), mapper)
+
+    ansatz = UCCSD(
+        num_spatial_orbitals=n_so,
+        num_particles=(alpha,beta),
+        qubit_mapper=mapper,
+        initial_state=hf_init
+    )
+
+    # 8) VQE
+    solver = QCVQESolver(service, shots=100, min_qubit_num=30, maxiter=300, optimization_level=3)
+    energies, best_params = solver.run_vqe(qubit_op, ansatz)
+    final_energy = energies[-1]
+    print("Final E:", final_energy)
+
+    # 9) save result
+    final_energy_path = os.path.join("results_projection", "final_energy.txt")
+    with open(final_energy_path, "w") as f:
+        f.write(str(final_energy) + "\n")
+    print(f"Final energy saved to {final_energy_path}")
+
+    os.makedirs("results_projection", exist_ok=True)
+
+    with open("results_projection/energy.csv","w",newline="") as cf:
+        import csv
+        writer=csv.writer(cf)
+        writer.writerow(["Iter","Energy"])
+        for i,e in enumerate(energies):
+            writer.writerow([i+1,e])
+
+    with open("results_projection/params.json","w") as jf:
+        import json
+        json.dump({"best_params":best_params.tolist()}, jf, indent=4)
 
 
 if __name__=="__main__":
