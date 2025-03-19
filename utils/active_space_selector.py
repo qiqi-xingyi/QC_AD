@@ -5,8 +5,8 @@
 # @File : active_space_selector.py
 
 import numpy as np
-import re
 from pyscf import scf
+from pyscf import mcscf
 
 class ActiveSpaceSelector:
     """
@@ -171,4 +171,33 @@ class ActiveSpaceSelector:
 
         # active_orbitals_list = list(range(min_idx, max_idx + 1))
         active_orbitals_list = list(range(0, 22))
+        return active_e, num_selected, min_idx, active_orbitals_list
+
+
+    def select_active_space_with_casscf(self, mol, mf, initial_active_e, initial_active_o):
+        # 使用初始活性空间进行CASSCF计算
+        mc = mcscf.CASSCF(mf, initial_active_o, initial_active_e)
+        mc.kernel()  # 执行CASSCF计算
+
+        # 获取自然轨道占据数
+        natocc = mc.get_natorb_occ()  # 需要确保PySCF版本支持此函数
+
+        # 选择自然轨道占据数在0.02到1.98之间的MO
+        active_mo_idx = [i for i, occ in enumerate(natocc) if 0.02 < occ < 1.98]
+
+        # 计算活性电子数和轨道数
+        active_e = sum([2 if occ > 1.9 else 1 if occ > 0.1 else 0 for occ in [natocc[i] for i in active_mo_idx]])
+        active_o = len(active_mo_idx)
+
+        # 确定连续的轨道范围
+        if active_mo_idx:
+            min_idx = min(active_mo_idx)
+            max_idx = max(active_mo_idx)
+            num_selected = max_idx - min_idx + 1
+        else:
+            min_idx = 0
+            max_idx = 1
+            num_selected = 1
+
+        active_orbitals_list = list(range(min_idx, max_idx + 1))
         return active_e, num_selected, min_idx, active_orbitals_list
