@@ -52,10 +52,11 @@ def main():
     initial_active_e, initial_mo_count, initial_mo_start, initial_active_orbitals_list = selector.select_active_space(mol, mf,residue_list, ligand_info, pdb_path)
     initial_active_o = initial_mo_start + initial_mo_count - 1
 
-    active_e, mo_count, mo_start, active_orbitals_list = selector.select_active_space_with_casscf(mol, mf, initial_active_e, initial_active_o)
+    print(f"initial active e:{initial_active_e}, initial active o:{initial_active_o}")
 
-    mo_end = mo_start + mo_count - 1
-    print(f"Active space => e={active_e}, mo range=[{mo_start}, {mo_end})")
+    active_e, active_o, mo_count, mo_start, active_orbitals_list = selector.select_active_space_with_casscf(mol, mf, initial_active_e, initial_active_o)
+
+    print(f"Active space => e={active_e}, o={active_o}")
 
     atom_str_list = []
     for (sym, (x, y, z)) in mol.atom:
