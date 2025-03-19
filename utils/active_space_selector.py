@@ -61,6 +61,7 @@ class ActiveSpaceSelector:
                  - active_e:   Total electrons in the chosen active MOs
                  - mo_count:   Number of orbitals in the contiguous range
                  - mo_start:   The lowest MO index included in the contiguous range
+                 - active_orbitals_list
         """
 
         # --- Step A: Read PDB to mark key-region atoms ---
@@ -168,5 +169,6 @@ class ActiveSpaceSelector:
 
         num_selected = max_idx - min_idx + 1
 
-        return active_e, num_selected, min_idx
-
+        # active_orbitals_list = list(range(min_idx, max_idx + 1))
+        active_orbitals_list = list(range(0, 20))
+        return active_e, num_selected, min_idx, active_orbitals_list

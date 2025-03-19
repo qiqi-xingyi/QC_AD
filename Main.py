@@ -46,10 +46,10 @@ def main():
     mol = builder.build_mole()
 
     # 4) run SCF + active space selection
-    selector = ActiveSpaceSelector(threshold=0.2)
+    selector = ActiveSpaceSelector(threshold=0.6)
     mf = selector.run_scf(mol)
 
-    active_e, mo_count, mo_start = selector.select_active_space(mol, mf, residue_list, ligand_info, pdb_path)
+    active_e, mo_count, mo_start, active_orbitals_list = selector.select_active_space(mol, mf, residue_list, ligand_info, pdb_path)
 
     mo_end = mo_start + mo_count - 1
     print(f"Active space => e={active_e}, mo range=[{mo_start}, {mo_end})")
@@ -72,13 +72,16 @@ def main():
     ast = ActiveSpaceTransformer(
         num_electrons=active_e,
         num_spatial_orbitals=mo_count,
-        active_orbitals=(mo_start, mo_end)
+        active_orbitals=active_orbitals_list
     )
     red_problem = ast.transform(es_problem)
 
     op = red_problem.hamiltonian.second_q_op()
     mapper = ParityMapper()
     qubit_op = mapper.map(op)
+
+    print("Qubit Hamiltonian Terms:", len(qubit_op))
+    print("Qubit Num:", qubit_op.num_qubits)
 
     # 7) create ansatz
     n_so = red_problem.num_spatial_orbitals
