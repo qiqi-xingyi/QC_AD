@@ -51,7 +51,7 @@ def main():
 
     active_e, mo_count, mo_start = selector.select_active_space(mol, mf, residue_list, ligand_info, pdb_path)
 
-    mo_end = mo_start + mo_count
+    mo_end = mo_start + mo_count - 1
     print(f"Active space => e={active_e}, mo range=[{mo_start}, {mo_end})")
 
     atom_str_list = []
