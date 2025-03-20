@@ -82,8 +82,8 @@ def main():
 
     # 6) ActiveSpaceTransformer
     ast = ActiveSpaceTransformer(
-        num_electrons=12,
-        num_spatial_orbitals=24,
+        num_electrons=active_e,
+        num_spatial_orbitals=active_o,
     )
     red_problem = ast.transform(es_problem)
 
