@@ -176,6 +176,17 @@ class ActiveSpaceSelector:
 
     def select_active_space_with_casscf(self, mol, mf, initial_active_e, initial_active_o):
 
+        total_mo = mf.mo_coeff.shape[1]
+        print(f"Total MO: {total_mo}")
+
+        mc = mcscf.CASSCF(mf, initial_active_o, initial_active_e)
+        if hasattr(mc, 'frozen'):
+            print(f"Frozen orbitals: {mc.frozen}")
+        else:
+            print("No frozen orbitals specified.")
+
+        print(f"Active orbitals (norb): {initial_active_o}")
+
         mc = mcscf.CASSCF(mf, initial_active_o, initial_active_e)
         mc.kernel()
 
@@ -197,3 +208,29 @@ class ActiveSpaceSelector:
 
         active_orbitals_list = list(range(min_idx, max_idx + 1))
         return active_e, active_o, num_selected, min_idx, active_orbitals_list
+
+    def select_active_space_with_energy(self, mf, n_before_homo=5, n_after_lumo=5):
+        """
+        Select active space based on MO energies around HOMO and LUMO.
+
+        :param mf: PySCF SCF object
+        :param n_before_homo: Number of MOs before HOMO to include
+        :param n_after_lumo: Number of MOs after LUMO to include
+        :return: (active_e, active_o, mo_start, active_orbitals_list)
+        """
+        mo_occ = mf.mo_occ
+        nmo = len(mo_occ)
+
+        homo_idx = np.where(mo_occ > 1.9)[0][-1]
+        lumo_idx = homo_idx + 1
+
+        mo_start = max(0, homo_idx - n_before_homo)
+        mo_end = min(nmo, lumo_idx + n_after_lumo + 1)
+        active_orbitals_list = list(range(mo_start, mo_end))
+        active_o = len(active_orbitals_list)
+
+        active_e = sum([2 if mo_occ[i] > 1.9 else 0 for i in active_orbitals_list])
+
+        print(f"Energy-based MO selection: selected {active_o} MOs around HOMO-LUMO, active_e={active_e}")
+
+        return active_e, active_o, mo_start, active_orbitals_list

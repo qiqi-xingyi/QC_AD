@@ -49,12 +49,19 @@ def main():
     selector = ActiveSpaceSelector(threshold=0.6)
     mf = selector.run_scf(mol)
 
-    initial_active_e, initial_mo_count, initial_mo_start, initial_active_orbitals_list = selector.select_active_space(mol, mf,residue_list, ligand_info, pdb_path)
-    initial_active_o = initial_mo_start + initial_mo_count - 1
+    # initial_active_e, initial_mo_count, initial_mo_start, initial_active_orbitals_list = selector.select_active_space(mol, mf,residue_list, ligand_info, pdb_path)
+    # initial_active_o = initial_mo_start + initial_mo_count - 1
+    #
+    # print(f"initial active e:{initial_active_e}, initial active o:{initial_active_o}")
+    #
+    # active_e, active_o, mo_count, mo_start, active_orbitals_list = selector.select_active_space_with_casscf(mol, mf, initial_active_e, initial_active_o)
+    #
+    # print(f"Active space => e={active_e}, o={active_o}")
 
-    print(f"initial active e:{initial_active_e}, initial active o:{initial_active_o}")
 
-    active_e, active_o, mo_count, mo_start, active_orbitals_list = selector.select_active_space_with_casscf(mol, mf, initial_active_e, initial_active_o)
+    active_e, active_o, mo_start, active_orbitals_list = selector.select_active_space_with_energy(
+        mf, n_before_homo=5, n_after_lumo=5
+    )
 
     print(f"Active space => e={active_e}, o={active_o}")
 
@@ -64,67 +71,67 @@ def main():
 
     print(f"Atom string list:{atom_str_list}")
 
-    # # 5) create Qiskit Nature Problem
-    # driver = PySCFDriver(
-    #     atom=atom_str_list,
-    #     basis=mol.basis,
-    #     charge=mol.charge,
-    #     spin=mol.spin,
-    #     unit=DistanceUnit.ANGSTROM
-    # )
-    # es_problem = driver.run()
-    #
-    # # 6) ActiveSpaceTransformer
-    # ast = ActiveSpaceTransformer(
-    #     num_electrons=12,
-    #     num_spatial_orbitals=24,
-    # )
-    # red_problem = ast.transform(es_problem)
-    #
-    # op = red_problem.hamiltonian.second_q_op()
-    # mapper = ParityMapper()
-    # qubit_op = mapper.map(op)
-    #
-    # print("Qubit Hamiltonian Terms:", len(qubit_op))
-    # print("Qubit Num:", qubit_op.num_qubits)
-    #
-    # # 7) create ansatz
-    # n_so = red_problem.num_spatial_orbitals
-    # alpha = red_problem.num_alpha
-    # beta  = red_problem.num_beta
-    # hf_init = HartreeFock(n_so, (alpha,beta), mapper)
-    #
-    # ansatz = UCCSD(
-    #     num_spatial_orbitals=n_so,
-    #     num_particles=(alpha,beta),
-    #     qubit_mapper=mapper,
-    #     initial_state=hf_init
-    # )
-    #
-    # # 8) VQE
-    # solver = QCVQESolver(service, shots=100, min_qubit_num=30, maxiter=300, optimization_level=3)
-    # energies, best_params = solver.run_vqe(qubit_op, ansatz)
-    # final_energy = energies[-1]
-    # print("Final E:", final_energy)
-    #
-    # # 9) save result
-    # final_energy_path = os.path.join("results_projection", "final_energy.txt")
-    # with open(final_energy_path, "w") as f:
-    #     f.write(str(final_energy) + "\n")
-    # print(f"Final energy saved to {final_energy_path}")
-    #
-    # os.makedirs("results_projection", exist_ok=True)
-    #
-    # with open("results_projection/energy.csv","w",newline="") as cf:
-    #     import csv
-    #     writer=csv.writer(cf)
-    #     writer.writerow(["Iter","Energy"])
-    #     for i,e in enumerate(energies):
-    #         writer.writerow([i+1,e])
-    #
-    # with open("results_projection/params.json","w") as jf:
-    #     import json
-    #     json.dump({"best_params":best_params.tolist()}, jf, indent=4)
+    # 5) create Qiskit Nature Problem
+    driver = PySCFDriver(
+        atom=atom_str_list,
+        basis=mol.basis,
+        charge=mol.charge,
+        spin=mol.spin,
+        unit=DistanceUnit.ANGSTROM
+    )
+    es_problem = driver.run()
+
+    # 6) ActiveSpaceTransformer
+    ast = ActiveSpaceTransformer(
+        num_electrons=12,
+        num_spatial_orbitals=24,
+    )
+    red_problem = ast.transform(es_problem)
+
+    op = red_problem.hamiltonian.second_q_op()
+    mapper = ParityMapper()
+    qubit_op = mapper.map(op)
+
+    print("Qubit Hamiltonian Terms:", len(qubit_op))
+    print("Qubit Num:", qubit_op.num_qubits)
+
+    # 7) create ansatz
+    n_so = red_problem.num_spatial_orbitals
+    alpha = red_problem.num_alpha
+    beta  = red_problem.num_beta
+    hf_init = HartreeFock(n_so, (alpha,beta), mapper)
+
+    ansatz = UCCSD(
+        num_spatial_orbitals=n_so,
+        num_particles=(alpha,beta),
+        qubit_mapper=mapper,
+        initial_state=hf_init
+    )
+
+    # 8) VQE
+    solver = QCVQESolver(service, shots=100, min_qubit_num=30, maxiter=300, optimization_level=3)
+    energies, best_params = solver.run_vqe(qubit_op, ansatz)
+    final_energy = energies[-1]
+    print("Final E:", final_energy)
+
+    # 9) save result
+    final_energy_path = os.path.join("results_projection", "final_energy.txt")
+    with open(final_energy_path, "w") as f:
+        f.write(str(final_energy) + "\n")
+    print(f"Final energy saved to {final_energy_path}")
+
+    os.makedirs("results_projection", exist_ok=True)
+
+    with open("results_projection/energy.csv","w",newline="") as cf:
+        import csv
+        writer=csv.writer(cf)
+        writer.writerow(["Iter","Energy"])
+        for i,e in enumerate(energies):
+            writer.writerow([i+1,e])
+
+    with open("results_projection/params.json","w") as jf:
+        import json
+        json.dump({"best_params":best_params.tolist()}, jf, indent=4)
 
 if __name__=="__main__":
     main()
