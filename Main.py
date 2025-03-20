@@ -59,7 +59,7 @@ def main():
     # print(f"Active space => e={active_e}, o={active_o}")
 
     active_e, active_o, mo_start, active_orbitals_list = selector.select_active_space_with_energy(
-        mf, n_before_homo=6, n_after_lumo=6
+        mf, n_before_homo=3, n_after_lumo=3
     )
 
     print(f"Active space => e={active_e}, o={active_o}")
