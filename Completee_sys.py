@@ -2,7 +2,7 @@
 # @Time : 2/15/25 4:22 PM
 # @Author : Yuqi Zhang
 # @Email : yzhan135@kent.edu
-# @File : Main.py
+# @File : Completee_sys.py
 
 import os
 import csv
@@ -49,17 +49,8 @@ def main():
     selector = ActiveSpaceSelector(threshold=0.6)
     mf = selector.run_scf(mol)
 
-    # initial_active_e, initial_mo_count, initial_mo_start, initial_active_orbitals_list = selector.select_active_space(mol, mf,residue_list, ligand_info, pdb_path)
-    # initial_active_o = initial_mo_start + initial_mo_count - 1
-    #
-    # print(f"initial active e:{initial_active_e}, initial active o:{initial_active_o}")
-    #
-    # active_e, active_o, mo_count, mo_start, active_orbitals_list = selector.select_active_space_with_casscf(mol, mf, initial_active_e, initial_active_o)
-    #
-    # print(f"Active space => e={active_e}, o={active_o}")
-
     active_e, active_o, mo_start, active_orbitals_list = selector.select_active_space_with_energy(
-        mf, n_before_homo=3, n_after_lumo=3
+        mf, n_before_homo=2, n_after_lumo=2
     )
 
     print(f"Active space => e={active_e}, o={active_o}")
