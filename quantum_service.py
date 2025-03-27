@@ -7,7 +7,6 @@
 from utils.config_manager import ConfigManager
 from qiskit_ibm_runtime import QiskitRuntimeService
 
-
 def test_ibm_quantum_service():
     try:
 
@@ -20,16 +19,16 @@ def test_ibm_quantum_service():
             token=cfg.get("TOKEN")
         )
 
-
         # Retrieve the list of available backends.
         backends = service.backends()
         if backends:
             print("IBM Quantum Service connected successfully!")
             print("Available backends:")
             for backend in backends:
-                print(" -", backend.name())
+                print(" -", backend.name)
         else:
             print("No backends available. Please check your service connection.")
+
     except Exception as e:
         print("Failed to connect to IBM Quantum Service:")
         print(e)
