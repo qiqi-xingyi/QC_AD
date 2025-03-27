@@ -26,9 +26,9 @@ class QCVQESolver:
 
     def _select_backend(self):
         backend = self.service.least_busy(
-            simulator=False,
-            operational=True,
-            min_num_qubits=self.min_qubit_num
+            simulator=True,
+            operational=False,
+            min_num_qubits=self.min_qubit_num + 5
         )
         return backend
 
